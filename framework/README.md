@@ -1,5 +1,3 @@
-# CS272: Geometric Modeling
-
 This is a viewer application, using [GLFW](https://www.glfw.org), [Dear ImGui](https://github.com/ocornut/imgui), and [OpenMesh](https://www.openmesh.org), and based on the [libigl](https://libigl.github.io) viewer.
 
 You will need to install the following packages:
