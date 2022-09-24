@@ -132,7 +132,8 @@ def pointToTriangles(point_p, faces):
     return project_point, shortest_dist
 
 
-def view():
+def view(file_obj, point_p, project_point):
+    """Load the mesh, point_p and projection point to viewer"""
     viewer = Viewer()
 
     # Change default path
@@ -157,10 +158,8 @@ def view():
         viewer.launch_shut()
         return
 
-    path = join(os.getcwd(), "HW1/mesh/paraboloid.obj")
-    viewer.load(path, False)
-    viewer.load(join(os.getcwd(), "HW1/mesh/generated_points.obj"), True)
-
+    viewer.load(file_obj, False)
+    viewer.add_point_for_drawing(point_p, project_point)
 
     # Rendering
     viewer.launch_rendering(True)
@@ -168,15 +167,16 @@ def view():
 
 
 def main():
-    file_obj = join(os.getcwd(), "HW1/paraboloid.obj")
+    file_obj = join(os.getcwd(), "HW1/mesh/paraboloid.obj")
     # file_obj = join(os.getcwd(), "HW1/mesh/birdnet_quad.obj")
+    # file_obj = join(os.getcwd(), "HW1/mesh/tower-cvt-6k-smooth.obj")
+
 
     if not os.path.exists(file_obj): # TODO: fix problem here
         write_paraboloid_obj(1, 1, -100, 100, -100, 100, 50, 50, file_obj)
 
-    # mesh = om.read_trimesh(file_obj)
     mesh = trimesh.load(file_obj)
-    point_p = np.array([2, -1, 1])
+    point_p = np.array([1, 0, 0])
     print('\n\nfinish loading the mesh ...\n\n')
 
     nearest_idx, nearest_dist = ann(point_p, mesh)
@@ -196,14 +196,8 @@ def main():
     print('projection point of point p on the mesh: {}'.format(project_point))
     print('distance to the projection point: {}'.format(shortest_dist))
 
-    # create a PointCLoud object
-    projection_cloud = trimesh.points.PointCloud(
-        np.vstack([project_point, point_p])
-    )
-    cloud_obj = join(os.getcwd(), "HW1/mesh/generated_points.obj")
-    projection_cloud.export(cloud_obj)
 
-    view()
+    view(file_obj, point_p, project_point)
 
 
 if __name__ == "__main__":

@@ -135,6 +135,12 @@ class Viewer(object):
         self.callback_key_up = None
         self.callback_key_repeat = None
 
+
+    def add_point_for_drawing(self, point_p, project_point):
+        self.point_p = point_p
+        self.project_point = project_point
+
+
     def launch(self, resizable=True, fullscreen=False, maximize=False, name='viewer', width=0, height=0):
 
         if not self.launch_init(resizable, fullscreen, maximize, name, width, height):

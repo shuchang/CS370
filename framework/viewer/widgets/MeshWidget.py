@@ -43,6 +43,14 @@ class MeshWidget(ViewerWidget):
 
             try:
                 index = self.viewer.selected_data_index
+                color = numpy.array([1, 0, 0]).reshape(1, 3)
+                self.viewer.data(index).clear_edges()
+                self.viewer.data(index).clear_points()
+                self.viewer.data(index).add_points(self.viewer.point_p.reshape((1,3)), color)
+                self.viewer.data(index).add_edges(
+                    self.viewer.point_p.reshape((1,3)),
+                    self.viewer.project_point.reshape((1,3)), color
+                )
                 mesh = self.loader.model(index)
                 if not isinstance(mesh, Mesh):
                     imgui.text("Object selected is not a mesh!")
