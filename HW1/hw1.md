@@ -45,6 +45,7 @@
     - Another case is that $a=0$ and $p_2=0$, or $b=0$ and $p_1=0$,
       - the equation is also reduced to $2p_3+4t=0$, which is  linear function and has one unique solution $\mathbf{x}^0 = (0, 0, 0)$
 
-- (c)
+- (c) Run the `HW1/hw1.py` and set the file_obj = join(os.getcwd(), "HW1/mesh/paraboloid.obj") to view the result. A screenshot is given as follows. ![](imgs/img3.jpg)
 
 #### Question 2
+- Run the `HW1/hw1.py` and set the file_obj = join(os.getcwd(), "HW1/mesh/birdnet_quad.obj") to view the rsesult. A screenshot is given as follows. ![](imgs/img4.jpg)
