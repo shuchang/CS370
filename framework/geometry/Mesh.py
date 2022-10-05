@@ -8,6 +8,15 @@ from utils.colormap import ColorMapType
 from utils.maths import gaussian, random_vector
 from geometry.Geometry import Geometry
 
+from tqdm import tqdm
+from scipy import optimize, stats
+
+import matplotlib as plt
+import matplotlib
+matplotlib.use("TkAgg")
+
+import seaborn as sns
+
 
 class NoiseDirection(IntEnum):
     NORMAL = 0
@@ -352,14 +361,75 @@ class Mesh(Geometry):
                 p = self.mesh.point(vh) + n * g
                 self.mesh.set_point(vh, p)
 
-    def curvatures(self, k=6):
-        # TODO: compute curvatures
-        gauss = numpy.random.rand(self.mesh.n_vertices(), 1)
-        mean = numpy.random.rand(self.mesh.n_vertices(), 1)
-        return gauss, mean
+    def curvatures(self, k=10):
+        gauss = []
+        mean = []
+
+        # Step1: find k neighbors of each vertex
+        for vh in tqdm(self.mesh.vertices()):
+            neighbors = []
+            neighborhood = [vh]
+
+            while len(neighbors) < k:
+                temp = []
+                for v in neighborhood:
+                    for neighbor_of_v in self.mesh.vv(v):
+                        if neighbor_of_v not in neighbors:
+                            neighbors.append(neighbor_of_v)
+                            temp.append(neighbor_of_v)
+                neighborhood = temp
+            neighbors = neighbors[:k]
+            point_list = [self.mesh.point(v) for v in neighbors]
+
+        # Step2: convert points into the Cartesian coordinate system
+            aligned_point_list = []
+            normal_vh = self.mesh.normal(vh)
+            transform_matrix = self._transform_matrix(normal_vh, [0, 0, 1])
+
+            for point in point_list:
+                p_vec = numpy.array([point[0], point[1], point[2]])
+                aligned_point_list.append(
+                    numpy.dot(transform_matrix, (p_vec - self.mesh.point(vh)))
+                )
+
+        # Step3: fit points to z = a_0 + a_1 x + a_2 y + a_3 x^2 + a_4 xy + a_5 y^2
+            p = numpy.vstack(aligned_point_list)
+            x, y, z = p[:,0], p[:,1], p[:,2]
+            def objective(a):
+                f = (a[0] + a[1]*x + a[2]*y + a[3]*x**2 + a[4]*x*y + a[5]*y**2-z)**2
+                return numpy.sum(f)
+
+            res = optimize.minimize(objective, numpy.zeros((6)))
+            gauss_vh = res.x[3] * res.x[5]
+            mean_vh = (res.x[3] + res.x[5])/2
+
+            gauss.append(gauss_vh)
+            mean.append(mean_vh)
+
+        # Step4: plot of curvature values in the (H, K) plane
+        gauss_array = numpy.array(gauss)
+        mean_array = numpy.array(mean)
+        with open("curvature.npy", "wb") as f:
+            numpy.save(f, gauss_array)
+            numpy.save(f, mean_array)
+        # with open("mean.npy", "wb") as f:
+        return gauss_array.reshape((-1, 1)), mean_array.reshape((-1, 1))
+
 
     def asymptotic_directions(self):
         # TODO: compute asymptotic directions
         indices = numpy.arange(self.mesh.n_vertices())
         normals = self.mesh.vertex_normals()
         return indices, normals
+
+
+    def _transform_matrix(self, v1, v2):
+        """Generates a matrix that transforms v1 into v2"""
+        a = (v1/numpy.linalg.norm(v1)).reshape(3)
+        b = (v2/numpy.linalg.norm(v2)).reshape(3)
+        v = numpy.cross(a, b)
+        c = numpy.dot(a, b)
+        s = numpy.linalg.norm(v)
+        kmat = numpy.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        transform_matrix = numpy.eye(3) + kmat + kmat.dot(kmat)*((1 - c)/(s**2))
+        return transform_matrix

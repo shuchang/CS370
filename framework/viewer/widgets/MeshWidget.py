@@ -12,7 +12,7 @@ class MeshWidget(ViewerWidget):
 
     noiseStandardDeviation = 0.1
     noiseDirection = NoiseDirection.NORMAL
-    curvatureNeighbours = 6
+    curvatureNeighbours = 10
 
     def __init__(self, expanded, loader):
         super().__init__(expanded)
@@ -46,11 +46,12 @@ class MeshWidget(ViewerWidget):
                 color = numpy.array([1, 0, 0]).reshape(1, 3)
                 self.viewer.data(index).clear_edges()
                 self.viewer.data(index).clear_points()
-                self.viewer.data(index).add_points(self.viewer.point_p.reshape((1,3)), color)
-                self.viewer.data(index).add_edges(
-                    self.viewer.point_p.reshape((1,3)),
-                    self.viewer.project_point.reshape((1,3)), color
-                )
+                if hasattr(self.viewer, "point_p"):
+                    self.viewer.data(index).add_points(self.viewer.point_p.reshape((1,3)), color)
+                    self.viewer.data(index).add_edges(
+                        self.viewer.point_p.reshape((1,3)),
+                        self.viewer.project_point.reshape((1,3)), color
+                    )
                 mesh = self.loader.model(index)
                 if not isinstance(mesh, Mesh):
                     imgui.text("Object selected is not a mesh!")
