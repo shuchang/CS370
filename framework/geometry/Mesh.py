@@ -477,109 +477,90 @@ class Mesh(Geometry):
         transform_matrix = np.eye(3) + kmat + kmat.dot(kmat)*((1 - c)/(s**2))
         return transform_matrix
 
-
-    def write2obj(self, M, filename = 'result.obj'):
-        """
-        write to obj
-        :return:
-        """
-
-        f = open(filename, "w+")
-        for i in range(self.num_vertices()):
-            vinfo = "v " + str(M[i][0]) + " " + str(M[i][1]) + " " + str(M[i][2]) + "\n"
-            f.write(vinfo)
-
-        for face_id, face in enumerate(self.mesh.faces()):
-            temF = []
-            for tem in self.mesh.fv(face):
-                temF.append(tem.idx()+1)
-            finfo = "f " + str(temF[0]) + " " + str(temF[1]) + " " + str(temF[2]) + " " + str(temF[3]) + "\n"
-            f.write(finfo)
-        f.close()
+    # def write2obj(self, M, filename = 'result.obj'):
+    #     """
+    #     write to obj
+    #     :return:
+    #     """
+    #     f = open(filename, "w+")
+    #     for i in range(self.num_vertices()):
+    #         vinfo = "v " + str(M[i][0]) + " " + str(M[i][1]) + " " + str(M[i][2]) + "\n"
+    #         f.write(vinfo)
+    #
+    #     for fa_idx, face in enumerate(self.mesh.faces()):
+    #         temF = []
+    #         for tem in self.mesh.fv(face):
+    #             temF.append(tem.idx()+1)
+    #         finfo = "f " + str(temF[0]) + " " + str(temF[1]) + " " + str(temF[2]) + " " + str(temF[3]) + "\n"
+    #         f.write(finfo)
+    #     f.close()
 
     def mesh_parameterization(self):
-        # Data setting
-        # M = all_points * 3
         points_list = [self.mesh.point(vh) for vh in self.mesh.vertices()]
-
-        # aligned_points_list = []
-
-        # for vh in self.mesh.vertices():
-        #     normal_vh = self.mesh.normal(vh)
-        #     transform_matrix = self._transform_matrix(normal_vh, [0, 0, 1])
-        #     aligned_points_list.append(np.dot(transform_matrix, self.mesh.point(vh)))
-
-        M = np.array(points_list)
-
-        # initial value for M'
+        # initialize M'
         M_prime = np.array(points_list)
         M_prime[:,2] = 0
-        # init lambda f
-        lambda_f = [1] * len(self.mesh.faces())
+        # initialize lambda f
+        lambda_f_list = [1 for _ in range(len(self.mesh.faces()))]
 
-        # energy thresholds
-        num_iter = 5
-        w_conf, w_lambda, w_f = 1, 1, 1
-
-        # Jaccob and f(x)
-        num_constraints = 3 * self.mesh.n_faces() + self.mesh.n_faces() + 2 * 3 * self.num_vertices()
-        num_variables = 3 * self.num_vertices() + self.mesh.n_faces()
+        num_constraints = 3*self.mesh.n_faces() + self.mesh.n_faces() + 2*3*self.mesh.n_vertices()
+        num_variables = 3*self.mesh.n_vertices() + self.mesh.n_faces()
         face_array = self.mesh.face_vertex_indices()
 
+        num_iter = 5
+        update_rate = 0.5
+        w_conf, w_lambda, w_f = 1, 1, 1
+
         for iter in range(num_iter):
-            print("iteration {}".format(iter))
-            J = np.zeros((num_constraints, num_variables))
-            f = np.zeros((num_constraints, 1))
+            print(f"=========== iteration {iter} ===========")
+            jaco = np.zeros((num_constraints, num_variables))
+            func = np.zeros((num_constraints, 1))
 
-            # conf constraints
-            for face_id, face in tqdm(enumerate(self.mesh.faces())):
+            # E_conf
+            for fa_idx in range(self.mesh.n_faces()):
                 # face-vertices index and coordinates
-                tem_points_index = face_array[face_id]
-                tem_origin_points_coor = [points_list[i] for i in tem_points_index]
-                tem_new_points_coor = [M_prime[i] for i in tem_points_index]
+                tem_points_index = face_array[fa_idx]
+                points_origin_xyz = [points_list[i] for i in tem_points_index]
+                points_prime_xyz = [M_prime[i] for i in tem_points_index]
 
-                # lambda
-                tem_lambda = lambda_f[face_id]
+                lambda_f = lambda_f_list[fa_idx]
+                # c_conf_0
+                jaco[3*fa_idx][(3*tem_points_index[0]) : (3*tem_points_index[0] + 3)] = -2 * (points_prime_xyz[0] - points_prime_xyz[2])
+                jaco[3*fa_idx][(3*tem_points_index[2]) : (3*tem_points_index[2] + 3)] = 2 * (points_prime_xyz[0] - points_prime_xyz[2])
+                jaco[3*fa_idx][3*self.num_vertices() + fa_idx] = np.linalg.norm(points_origin_xyz[0] - points_origin_xyz[2]) ** 2
+                func[3*fa_idx] = lambda_f * np.linalg.norm(points_origin_xyz[0] - points_origin_xyz[2]) ** 2 \
+                                - np.linalg.norm(points_prime_xyz[0] - points_prime_xyz[2]) ** 2
+                # c_conf_1
+                jaco[3*fa_idx + 1][(3*tem_points_index[1]): (3*tem_points_index[1] + 3)] = -2 * (points_prime_xyz[1] - points_prime_xyz[3])
+                jaco[3*fa_idx + 1][(3*tem_points_index[3]): (3*tem_points_index[3] + 3)] = 2 * (points_prime_xyz[1] - points_prime_xyz[3])
+                jaco[3*fa_idx + 1][3*self.num_vertices() + fa_idx] = np.linalg.norm(points_origin_xyz[1] - points_origin_xyz[3]) ** 2
+                func[3*fa_idx + 1] = lambda_f * np.linalg.norm(points_origin_xyz[1] - points_origin_xyz[3]) ** 2 \
+                                 - np.linalg.norm(points_prime_xyz[1] - points_prime_xyz[3]) ** 2
+                # c_conf_2
+                jaco[3*fa_idx + 2][(3*tem_points_index[0]) : (3*tem_points_index[0] + 3)] = -1 * (points_prime_xyz[1] - points_prime_xyz[3])
+                jaco[3*fa_idx + 2][(3*tem_points_index[1]) : (3*tem_points_index[1] + 3)] = -1 * (points_prime_xyz[0] - points_prime_xyz[2])
+                jaco[3*fa_idx + 2][(3*tem_points_index[2]) : (3*tem_points_index[2] + 3)] = points_prime_xyz[1] - points_prime_xyz[3]
+                jaco[3*fa_idx + 2][(3*tem_points_index[3]) : (3*tem_points_index[3] + 3)] = points_prime_xyz[0] - points_prime_xyz[2]
+                jaco[3*fa_idx + 2][3*self.num_vertices() + fa_idx] = np.dot((points_origin_xyz[0] - points_origin_xyz[2]), (points_origin_xyz[1] - points_origin_xyz[3]))
+                func[3*fa_idx + 2] = lambda_f * np.dot((points_origin_xyz[0] - points_origin_xyz[2]), (points_origin_xyz[1] - points_origin_xyz[3])) \
+                                    - np.dot((points_prime_xyz[0] - points_prime_xyz[2]), (points_prime_xyz[1] - points_prime_xyz[3]))
+            jaco *= w_conf
+            func *= w_conf
 
-                # c_conf,0  var: v0, v2, lambda
-                J[3 * face_id][(3 * tem_points_index[0]) : (3 * tem_points_index[0] + 3)] = -2 * (tem_new_points_coor[0] - tem_new_points_coor[2])
-                J[3 * face_id][(3 * tem_points_index[2]) : (3 * tem_points_index[2] + 3)] = 2 * (tem_new_points_coor[0] - tem_new_points_coor[2])
-                J[3 * face_id][3 * self.num_vertices() + face_id] = np.linalg.norm(tem_origin_points_coor[0] - tem_origin_points_coor[2]) ** 2
-                f[3 * face_id] = tem_lambda * np.linalg.norm(tem_origin_points_coor[0] - tem_origin_points_coor[2]) ** 2 \
-                                - np.linalg.norm(tem_new_points_coor[0] - tem_new_points_coor[2]) ** 2
+            # E_lambda
+            for fa_idx in range(self.mesh.n_faces()):
+                lambda_f = lambda_f_list[fa_idx]
+                jaco[3*self.mesh.n_faces() + fa_idx][3*self.num_vertices() + fa_idx] = w_lambda*1
+                func[3*self.mesh.n_faces() + fa_idx] = w_lambda*(lambda_f - 1)
 
-                # c_conf,1
-                J[3 * face_id + 1][(3 * tem_points_index[1]): (3 * tem_points_index[1] + 3)] = -2 * (tem_new_points_coor[1] - tem_new_points_coor[3])
-                J[3 * face_id + 1][(3 * tem_points_index[3]): (3 * tem_points_index[3] + 3)] = 2 * (tem_new_points_coor[1] - tem_new_points_coor[3])
-                J[3 * face_id + 1][3 * self.num_vertices() + face_id] = np.linalg.norm(tem_origin_points_coor[1] - tem_origin_points_coor[3]) ** 2
-                f[3 * face_id + 1] = tem_lambda * np.linalg.norm(tem_origin_points_coor[1] - tem_origin_points_coor[3]) ** 2 \
-                                 - np.linalg.norm(tem_new_points_coor[1] - tem_new_points_coor[3]) ** 2
-
-                # c_conf, 2
-                J[3 * face_id + 2][(3 * tem_points_index[0]) : (3 * tem_points_index[0] + 3)] = -1 * (tem_new_points_coor[1] - tem_new_points_coor[3])
-                J[3 * face_id + 2][(3 * tem_points_index[1]) : (3 * tem_points_index[1] + 3)] = -1 * (tem_new_points_coor[0] - tem_new_points_coor[2])
-                J[3 * face_id + 2][(3 * tem_points_index[2]) : (3 * tem_points_index[2] + 3)] = tem_new_points_coor[1] - tem_new_points_coor[3]
-                J[3 * face_id + 2][(3 * tem_points_index[3]) : (3 * tem_points_index[3] + 3)] = tem_new_points_coor[0] - tem_new_points_coor[2]
-                J[3 * face_id + 2][3 * self.num_vertices() + face_id] = np.dot((tem_origin_points_coor[0] - tem_origin_points_coor[2]), (tem_origin_points_coor[1] - tem_origin_points_coor[3]))
-                f[3 * face_id + 2] = tem_lambda * np.dot((tem_origin_points_coor[0] - tem_origin_points_coor[2]), (tem_origin_points_coor[1] - tem_origin_points_coor[3])) \
-                                    - np.dot((tem_new_points_coor[0] - tem_new_points_coor[2]), (tem_new_points_coor[1] - tem_new_points_coor[3]))
-
-            J = J * w_conf
-            f = f * w_conf
-
-            # lambda constraints
-            for face_id, face in tqdm(enumerate(self.mesh.faces())):
-                tem_lambda = lambda_f[face_id]
-
-                J[3 * self.mesh.n_faces() + face_id][3 * self.num_vertices() + face_id] = 1 * w_lambda
-                f[3 * self.mesh.n_faces() + face_id] = (tem_lambda - 1) * w_lambda
-
-            # fairness
-            cnt_const = 3 * self.mesh.n_faces() + self.mesh.n_faces()
-            for idx_vertex, vh in enumerate(self.mesh.vertices()):
+            # E_fairness
+            cnt_const = 3*self.mesh.n_faces() + self.mesh.n_faces()
+            for vh_idx, vh in enumerate(self.mesh.vertices()):
                 vertex_list = []
+
                 for vertex in self.mesh.vv(vh):
                     vertex_list.append(vertex)
+
                 idx_v_list = [vertex.idx() for vertex in vertex_list]
                 point_list = [self.mesh.point(vertex) for vertex in vertex_list]
                 point_vh = self.mesh.point(vh)
@@ -587,55 +568,45 @@ class Mesh(Geometry):
                 if self.mesh.is_boundary(vh):
                     if len(vertex_list) == 3:
                         for i in range(3):
-                            J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[0] + i] = 1 * w_f  # dc/dv0
-                            J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[2] + i] = 1 * w_f  # dc/dv2
-                            J[cnt_const + 6 * idx_vertex + i][3 * vh.idx() + i] = -2 * w_f  # dc/dvi
-                            f[cnt_const + 6 * idx_vertex + i] = (point_list[0][i] + point_list[2][i] - 2 * point_vh[
-                                i]) * w_f
-                    continue
+                            # v_0, v_i, v_2 are successive vertices
+                            jaco[cnt_const + 6*vh_idx + i][3*idx_v_list[0] + i] = 1*w_f
+                            jaco[cnt_const + 6*vh_idx + i][3*idx_v_list[2] + i] = 1*w_f
+                            jaco[cnt_const + 6*vh_idx + i][3*vh.idx() + i] = -2*w_f
+                            func[cnt_const + 6*vh_idx + i] = (point_list[0][i] + point_list[2][i] - 2*point_vh[i]) * w_f
+                else:
+                    if len(vertex_list) == 4:
+                        for i in range(3):
+                            # v_0, v_i, v_2 are successive vertices
+                            jaco[cnt_const + 6*vh_idx + i][3*idx_v_list[0] + i] = 1*w_f
+                            jaco[cnt_const + 6*vh_idx + i][3*idx_v_list[2] + i] = 1*w_f
+                            jaco[cnt_const + 6*vh_idx + i][3*vh.idx() + i] = -2*w_f
+                            func[cnt_const + 6*vh_idx + i] = (point_list[0][i] + point_list[2][i] - 2*point_vh[i])*w_f
+                            # v_1, v_i, v_3 are successive vertices
+                            jaco[cnt_const + 6*vh_idx + 3 + i][3*idx_v_list[1] + i] = 1*w_f
+                            jaco[cnt_const + 6*vh_idx + 3 + i][3*idx_v_list[3] + i] = 1*w_f
+                            jaco[cnt_const + 6*vh_idx + 3 + i][3*vh.idx() + i] = -2*w_f
+                            func[cnt_const + 6*vh_idx + 3 + i] = (point_list[1][i] + point_list[3][i] - 2*point_vh[i])*w_f
 
-                if len(vertex_list) != 4:
-                    continue
-
-                for i in range(3):
-                    J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[0] + i] = 1 * w_f  # dc/dv0
-                    J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[2] + i] = 1 * w_f  # dc/dv2
-                    J[cnt_const + 6 * idx_vertex + i][3 * vh.idx() + i] = -2 * w_f  # dc/dvi
-                    f[cnt_const + 6 * idx_vertex + i] = (point_list[0][i] + point_list[2][i] - 2 * point_vh[i]) * w_f
-
-                    J[cnt_const + 6 * idx_vertex + 3 + i][3 * idx_v_list[1] + i] = 1 * w_f  # dc/dv1
-                    J[cnt_const + 6 * idx_vertex + 3 + i][3 * idx_v_list[3] + i] = 1 * w_f  # dc/dv3
-                    J[cnt_const + 6 * idx_vertex + 3 + i][3 * vh.idx() + i] = -2 * w_f  # dc/dvi
-                    f[cnt_const + 6 * idx_vertex + 3 + i] = (point_list[1][i] + point_list[3][i] - 2 * point_vh[i]) * w_f
-
-            J_trans = np.transpose(J)
-            H = np.dot(J_trans, J)
-            B = -np.dot(J_trans, f)
-            print("start")
+            J_trans = np.transpose(jaco)
+            H = np.dot(J_trans, jaco)
+            B = -np.dot(J_trans, func)
             try:
-                delta = np.linalg.solve(H, B)   # variables * 1
+                delta = np.linalg.solve(H, B)
             except:
                 print("singular")
                 delta = np.matmul(np.linalg.pinv(H), B)
-            print("end")
-            # update M prime M_prime
-            update_lr = 0.5  # liiquid
-            update_lr = 0.5
-            for ver_id, vertex in enumerate(self.mesh.vertices()):
-                # pdb.set_trace()
-                M_prime[ver_id] = M_prime[ver_id] + update_lr * delta[3 * ver_id: 3 * ver_id + 3].flatten()
-                # if iter == num_iter - 1:
-                    # M_prime[ver_id][2] = 0
-                self.mesh.set_point(vertex, M_prime[ver_id])
-                    # pdb.set_trace()
+
+            # update M prime
+            for vh_idx, vh in enumerate(self.mesh.vertices()):
+                M_prime[vh_idx] = M_prime[vh_idx] + update_rate * delta[3 * vh_idx: 3 * vh_idx + 3].flatten()
+                self.mesh.set_point(vh, M_prime[vh_idx])
 
             # update lambda
-            lambda_f = lambda_f + update_lr * delta[3 * self.num_vertices(): ].flatten()
+            lambda_f_list = lambda_f_list + update_rate * delta[3 * self.num_vertices(): ].flatten()
 
-            # log error
-            E_conf = np.dot(np.transpose(f[:3 * self.mesh.n_faces()]), f[:3 * self.mesh.n_faces()])
-            E_lambda = np.dot(np.transpose(f[3 * self.mesh.n_faces():]), f[3 * self.mesh.n_faces():])
-            print("Iteration {} - E conf: {}".format(iter, E_conf))
-            print("Iteration {} - E lambda: {}".format(iter, E_lambda))
+            E_conf = np.dot(np.transpose(func[:3 * self.mesh.n_faces()]), func[:3 * self.mesh.n_faces()])
+            E_lambda = np.dot(np.transpose(func[3 * self.mesh.n_faces():]), func[3 * self.mesh.n_faces():])
+            print(f"E conf: {E_conf}")
+            print(f"E lambda: {E_lambda}")
 
-        print("Optimization Finish")
+        print("Done mesh parameterization")
