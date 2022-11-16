@@ -16,6 +16,7 @@ import matplotlib
 matplotlib.use("TkAgg")
 
 import seaborn as sns
+import pdb
 
 
 class NoiseDirection(IntEnum):
@@ -360,6 +361,53 @@ class Mesh(Geometry):
                 g = gaussian(0, average_length * standard_deviation)
                 p = self.mesh.point(vh) + n * g
                 self.mesh.set_point(vh, p)
+
+    def mesh_parameterization(self):
+        M_orignal = numpy.array([self.mesh.point(vh) for vh in self.mesh.vertices()])
+        num_v = M_orignal.shape[0]
+
+        lambda_f0 = numpy.array([1 for _ in range(len(self.mesh.faces()))])
+        x0 = numpy.append(M_orignal[:,:2].flatten('F'), lambda_f0)
+        w_conf, w_lambda, w_fair = 1, 1, 0.1
+
+        def objective(x):
+            E_total = 0
+
+            M_p_x = x[:num_v]
+            M_p_y = x[num_v:2*num_v]
+            lambda_f_array = x[2*num_v:]
+
+            for fa_idx, fa in enumerate(self.mesh.faces()):
+                lambda_f = lambda_f_array[fa_idx]
+                v_o_xyz = numpy.array([M_orignal[v.idx()] for v in self.mesh.fv(fa)])
+                v_p_xy = numpy.array([numpy.array([M_p_x[v.idx()], M_p_y[v.idx()]]) for v in self.mesh.fv(fa)])
+
+                c_conf_0 = lambda_f*numpy.dot(v_o_xyz[0] - v_o_xyz[2], v_o_xyz[0] - v_o_xyz[2]) - \
+                    numpy.dot(v_p_xy[0]-v_p_xy[2], v_p_xy[0]-v_p_xy[2])
+                c_conf_1 = lambda_f*numpy.dot(v_o_xyz[1] - v_o_xyz[3], v_o_xyz[1] - v_o_xyz[3]) - \
+                    numpy.dot(v_p_xy[1]-v_p_xy[3], v_p_xy[1]-v_p_xy[3])
+                c_conf_2 = lambda_f*numpy.dot(v_o_xyz[0] - v_o_xyz[2], v_o_xyz[1] - v_o_xyz[3]) - \
+                    numpy.dot(v_p_xy[0]-v_p_xy[2], v_p_xy[1]-v_p_xy[3])
+                E_conf = w_conf*(c_conf_0**2 + c_conf_1**2 + c_conf_2**2)
+                E_lambda = w_lambda*(lambda_f - 1)**2
+
+                E_total += E_conf + E_lambda
+
+            for vh in self.mesh.vertices():
+                neighbor_vertices = self.mesh.vv(vh)
+                neighbor_idxs = [i.idx() for i in neighbor_vertices]
+                if len(neighbor_idxs) == 3:
+                    v_k_xy = numpy.array([M_p_x[vh.idx()], M_p_y[vh.idx()]])
+                    v_i_xy = numpy.array([M_p_x[neighbor_idxs[0]], M_p_y[neighbor_idxs[0]]])
+                    v_j_xy = numpy.array([M_p_x[neighbor_idxs[2]], M_p_y[neighbor_idxs[2]]])
+                    E_fair = numpy.dot(v_i_xy - 2*v_k_xy + v_j_xy, v_i_xy - 2*v_k_xy + v_j_xy)
+
+                    E_total += w_fair*E_fair
+
+            print(E_total)
+            return E_total
+        res = optimize.minimize(objective, x0)
+
 
     def curvatures(self, k=10):
         gauss = []
