@@ -1,7 +1,7 @@
 import copy
 import os
 import math
-import numpy
+import numpy as np
 import openmesh
 from enum import IntEnum
 from utils.colormap import ColorMapType
@@ -11,12 +11,7 @@ from geometry.Geometry import Geometry
 from tqdm import tqdm
 from scipy import optimize, stats
 
-import matplotlib as plt
-import matplotlib
-matplotlib.use("TkAgg")
 
-import seaborn as sns
-import pdb
 
 
 class NoiseDirection(IntEnum):
@@ -30,7 +25,7 @@ class Mesh(Geometry):
         super().__init__()
         self.render_edges = True
         self.render_flat_faces = False
-        self.edge_color = numpy.array([0.0, 0.0, 0.0, 1.0])
+        self.edge_color = np.array([0.0, 0.0, 0.0, 1.0])
         self.colormap = ColorMapType.NUM_COLOR_MAP_TYPES
         self.mesh = None
         self.mesh_original = None
@@ -93,7 +88,7 @@ class Mesh(Geometry):
         else:
             data.face_based = False
         if self.render_edges:
-            data.add_edges(p1, p2, numpy.array([self.edge_color]))
+            data.add_edges(p1, p2, np.array([self.edge_color]))
         data.line_width = 1.0
         data.show_lines = False
         # show_texture = True
@@ -161,12 +156,12 @@ class Mesh(Geometry):
             tri_mesh.set_face_handle(base_heh, fh)
 
         # Resize arrays
-        verts = numpy.empty((tri_mesh.n_vertices(), 3))
-        faces = numpy.empty((tri_mesh.n_faces(), 3), dtype=numpy.uint32)
-        f_to_f = numpy.empty((tri_mesh.n_faces(), 1), dtype=numpy.uint32)
-        norms = numpy.empty((tri_mesh.n_faces(), 3))
+        verts = np.empty((tri_mesh.n_vertices(), 3))
+        faces = np.empty((tri_mesh.n_faces(), 3), dtype=np.uint32)
+        f_to_f = np.empty((tri_mesh.n_faces(), 1), dtype=np.uint32)
+        norms = np.empty((tri_mesh.n_faces(), 3))
         if mesh.has_vertex_texcoords2D():
-            texs = numpy.empty((tri_mesh.n_vertices(), 2))
+            texs = np.empty((tri_mesh.n_vertices(), 2))
         else:
             texs = None
 
@@ -203,8 +198,8 @@ class Mesh(Geometry):
                 texs[vh.idx(), 1] = tex[1]
 
         # Edges
-        edges1 = numpy.empty((mesh.n_edges(), 3))
-        edges2 = numpy.empty((mesh.n_edges(), 3))
+        edges1 = np.empty((mesh.n_edges(), 3))
+        edges2 = np.empty((mesh.n_edges(), 3))
         for eh in mesh.edges():
             vh1 = mesh.to_vertex_handle(mesh.halfedge_handle(eh, 0))
             vh2 = mesh.from_vertex_handle(mesh.halfedge_handle(eh, 0))
@@ -258,7 +253,7 @@ class Mesh(Geometry):
 
     def face_center(self, index):
         fh = self.mesh.face_handle(index)
-        p = numpy.array([0.0, 0.0, 0.0])
+        p = np.array([0.0, 0.0, 0.0])
         for vh in self.mesh.fv(fh):
             p += self.mesh.point(vh)
         p /= self.mesh.valence(fh)
@@ -272,14 +267,14 @@ class Mesh(Geometry):
 
     def normalize(self):
         total_area = 0.0
-        barycenter = [numpy.array([0.0, 0.0, 0.0])] * self.mesh.n_faces()
+        barycenter = [np.array([0.0, 0.0, 0.0])] * self.mesh.n_faces()
         area = [0.0] * self.mesh.n_faces()
 
         # loop over faces
         for fh in self.mesh.faces():
 
             # compute barycenter of face
-            center = numpy.array([0.0, 0.0, 0.0])
+            center = np.array([0.0, 0.0, 0.0])
             valence = 0
             vertices = []
             for vh in self.mesh.fv(fh):
@@ -295,7 +290,7 @@ class Mesh(Geometry):
                 v2 = self.mesh.point(vertices[2])
 
                 # A = 0.5 * || (v0 - v1) x (v2 - v1) ||
-                a = 0.5 * numpy.linalg.norm(numpy.cross((v0 - v1), (v2 - v1)))
+                a = 0.5 * np.linalg.norm(np.cross((v0 - v1), (v2 - v1)))
                 area[fh.idx()] = a
                 total_area += area[fh.idx()]
 
@@ -306,10 +301,10 @@ class Mesh(Geometry):
                 v3 = self.mesh.point(vertices[3])
 
                 # A = 0.5 * || (v0 - v1) x (v2 - v1) ||
-                a012 = numpy.linalg.norm(numpy.cross((v0 - v1), (v2 - v1)))
-                a023 = numpy.linalg.norm(numpy.cross((v0 - v2), (v3 - v2)))
-                a013 = numpy.linalg.norm(numpy.cross((v0 - v1), (v3 - v1)))
-                a123 = numpy.linalg.norm(numpy.cross((v1 - v2), (v3 - v2)))
+                a012 = np.linalg.norm(np.cross((v0 - v1), (v2 - v1)))
+                a023 = np.linalg.norm(np.cross((v0 - v2), (v3 - v2)))
+                a013 = np.linalg.norm(np.cross((v0 - v1), (v3 - v1)))
+                a123 = np.linalg.norm(np.cross((v1 - v2), (v3 - v2)))
                 area[fh.idx()] = (a012 + a023 + a013 + a123) * 0.25
                 total_area += area[fh.idx()]
 
@@ -318,7 +313,7 @@ class Mesh(Geometry):
                 return
 
         # compute mesh centroid
-        centroid = numpy.array([0.0, 0.0, 0.0])
+        centroid = np.array([0.0, 0.0, 0.0])
         for i in range(self.mesh.n_faces()):
             centroid += area[i] / total_area * barycenter[i]
 
@@ -362,51 +357,51 @@ class Mesh(Geometry):
                 p = self.mesh.point(vh) + n * g
                 self.mesh.set_point(vh, p)
 
-    def mesh_parameterization(self):
-        M_orignal = numpy.array([self.mesh.point(vh) for vh in self.mesh.vertices()])
-        num_v = M_orignal.shape[0]
+    # def mesh_parameterization(self):
+    #     M_orignal = np.array([self.mesh.point(vh) for vh in self.mesh.vertices()])
+    #     num_v = M_orignal.shape[0]
 
-        lambda_f0 = numpy.array([1 for _ in range(len(self.mesh.faces()))])
-        x0 = numpy.append(M_orignal[:,:2].flatten('F'), lambda_f0)
-        w_conf, w_lambda, w_fair = 1, 1, 0.1
+    #     lambda_f0 = np.array([1 for _ in range(len(self.mesh.faces()))])
+    #     x0 = np.append(M_orignal[:,:2].flatten('F'), lambda_f0)
+    #     w_conf, w_lambda, w_fair = 1, 1, 0.1
 
-        def objective(x):
-            E_total = 0
+    #     def objective(x):
+    #         E_total = 0
 
-            M_p_x = x[:num_v]
-            M_p_y = x[num_v:2*num_v]
-            lambda_f_array = x[2*num_v:]
+    #         M_p_x = x[:num_v]
+    #         M_p_y = x[num_v:2*num_v]
+    #         lambda_f_array = x[2*num_v:]
 
-            for fa_idx, fa in enumerate(self.mesh.faces()):
-                lambda_f = lambda_f_array[fa_idx]
-                v_o_xyz = numpy.array([M_orignal[v.idx()] for v in self.mesh.fv(fa)])
-                v_p_xy = numpy.array([numpy.array([M_p_x[v.idx()], M_p_y[v.idx()]]) for v in self.mesh.fv(fa)])
+    #         for fa_idx, fa in enumerate(self.mesh.faces()):
+    #             lambda_f = lambda_f_array[fa_idx]
+    #             v_o_xyz = np.array([M_orignal[v.idx()] for v in self.mesh.fv(fa)])
+    #             v_p_xy = np.array([np.array([M_p_x[v.idx()], M_p_y[v.idx()]]) for v in self.mesh.fv(fa)])
 
-                c_conf_0 = lambda_f*numpy.dot(v_o_xyz[0] - v_o_xyz[2], v_o_xyz[0] - v_o_xyz[2]) - \
-                    numpy.dot(v_p_xy[0]-v_p_xy[2], v_p_xy[0]-v_p_xy[2])
-                c_conf_1 = lambda_f*numpy.dot(v_o_xyz[1] - v_o_xyz[3], v_o_xyz[1] - v_o_xyz[3]) - \
-                    numpy.dot(v_p_xy[1]-v_p_xy[3], v_p_xy[1]-v_p_xy[3])
-                c_conf_2 = lambda_f*numpy.dot(v_o_xyz[0] - v_o_xyz[2], v_o_xyz[1] - v_o_xyz[3]) - \
-                    numpy.dot(v_p_xy[0]-v_p_xy[2], v_p_xy[1]-v_p_xy[3])
-                E_conf = w_conf*(c_conf_0**2 + c_conf_1**2 + c_conf_2**2)
-                E_lambda = w_lambda*(lambda_f - 1)**2
+    #             c_conf_0 = lambda_f*np.dot(v_o_xyz[0] - v_o_xyz[2], v_o_xyz[0] - v_o_xyz[2]) - \
+    #                 np.dot(v_p_xy[0]-v_p_xy[2], v_p_xy[0]-v_p_xy[2])
+    #             c_conf_1 = lambda_f*np.dot(v_o_xyz[1] - v_o_xyz[3], v_o_xyz[1] - v_o_xyz[3]) - \
+    #                 np.dot(v_p_xy[1]-v_p_xy[3], v_p_xy[1]-v_p_xy[3])
+    #             c_conf_2 = lambda_f*np.dot(v_o_xyz[0] - v_o_xyz[2], v_o_xyz[1] - v_o_xyz[3]) - \
+    #                 np.dot(v_p_xy[0]-v_p_xy[2], v_p_xy[1]-v_p_xy[3])
+    #             E_conf = w_conf*(c_conf_0**2 + c_conf_1**2 + c_conf_2**2)
+    #             E_lambda = w_lambda*(lambda_f - 1)**2
 
-                E_total += E_conf + E_lambda
+    #             E_total += E_conf + E_lambda
 
-            for vh in self.mesh.vertices():
-                neighbor_vertices = self.mesh.vv(vh)
-                neighbor_idxs = [i.idx() for i in neighbor_vertices]
-                if len(neighbor_idxs) == 3:
-                    v_k_xy = numpy.array([M_p_x[vh.idx()], M_p_y[vh.idx()]])
-                    v_i_xy = numpy.array([M_p_x[neighbor_idxs[0]], M_p_y[neighbor_idxs[0]]])
-                    v_j_xy = numpy.array([M_p_x[neighbor_idxs[2]], M_p_y[neighbor_idxs[2]]])
-                    E_fair = numpy.dot(v_i_xy - 2*v_k_xy + v_j_xy, v_i_xy - 2*v_k_xy + v_j_xy)
+    #         for vh in self.mesh.vertices():
+    #             neighbor_vertices = self.mesh.vv(vh)
+    #             neighbor_idxs = [i.idx() for i in neighbor_vertices]
+    #             if len(neighbor_idxs) == 3:
+    #                 v_k_xy = np.array([M_p_x[vh.idx()], M_p_y[vh.idx()]])
+    #                 v_i_xy = np.array([M_p_x[neighbor_idxs[0]], M_p_y[neighbor_idxs[0]]])
+    #                 v_j_xy = np.array([M_p_x[neighbor_idxs[2]], M_p_y[neighbor_idxs[2]]])
+    #                 E_fair = np.dot(v_i_xy - 2*v_k_xy + v_j_xy, v_i_xy - 2*v_k_xy + v_j_xy)
 
-                    E_total += w_fair*E_fair
+    #                 E_total += w_fair*E_fair
 
-            print(E_total)
-            return E_total
-        res = optimize.minimize(objective, x0)
+    #         print(E_total)
+    #         return E_total
+    #     res = optimize.minimize(objective, x0)
 
 
     def curvatures(self, k=10):
@@ -435,19 +430,19 @@ class Mesh(Geometry):
             transform_matrix = self._transform_matrix(normal_vh, [0, 0, 1])
 
             for point in point_list:
-                p_vec = numpy.array([point[0], point[1], point[2]])
+                p_vec = np.array([point[0], point[1], point[2]])
                 aligned_point_list.append(
-                    numpy.dot(transform_matrix, (p_vec - self.mesh.point(vh)))
+                    np.dot(transform_matrix, (p_vec - self.mesh.point(vh)))
                 )
 
         # Step3: fit points to z = a_0 + a_1 x + a_2 y + a_3 x^2 + a_4 xy + a_5 y^2
-            p = numpy.vstack(aligned_point_list)
+            p = np.vstack(aligned_point_list)
             x, y, z = p[:,0], p[:,1], p[:,2]
             def objective(a):
                 f = (a[0] + a[1]*x + a[2]*y + a[3]*x**2 + a[4]*x*y + a[5]*y**2-z)**2
-                return numpy.sum(f)
+                return np.sum(f)
 
-            res = optimize.minimize(objective, numpy.zeros((6)))
+            res = optimize.minimize(objective, np.zeros((6)))
             gauss_vh = res.x[3] * res.x[5]
             mean_vh = (res.x[3] + res.x[5])/2
 
@@ -455,29 +450,192 @@ class Mesh(Geometry):
             mean.append(mean_vh)
 
         # Step4: plot of curvature values in the (H, K) plane
-        gauss_array = numpy.array(gauss)
-        mean_array = numpy.array(mean)
+        gauss_array = np.array(gauss)
+        mean_array = np.array(mean)
         with open("curvature.npy", "wb") as f:
-            numpy.save(f, gauss_array)
-            numpy.save(f, mean_array)
+            np.save(f, gauss_array)
+            np.save(f, mean_array)
         # with open("mean.npy", "wb") as f:
         return gauss_array.reshape((-1, 1)), mean_array.reshape((-1, 1))
 
 
     def asymptotic_directions(self):
         # TODO: compute asymptotic directions
-        indices = numpy.arange(self.mesh.n_vertices())
+        indices = np.arange(self.mesh.n_vertices())
         normals = self.mesh.vertex_normals()
         return indices, normals
 
 
     def _transform_matrix(self, v1, v2):
         """Generates a matrix that transforms v1 into v2"""
-        a = (v1/numpy.linalg.norm(v1)).reshape(3)
-        b = (v2/numpy.linalg.norm(v2)).reshape(3)
-        v = numpy.cross(a, b)
-        c = numpy.dot(a, b)
-        s = numpy.linalg.norm(v)
-        kmat = numpy.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-        transform_matrix = numpy.eye(3) + kmat + kmat.dot(kmat)*((1 - c)/(s**2))
+        a = (v1/np.linalg.norm(v1)).reshape(3)
+        b = (v2/np.linalg.norm(v2)).reshape(3)
+        v = np.cross(a, b)
+        c = np.dot(a, b)
+        s = np.linalg.norm(v)
+        kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        transform_matrix = np.eye(3) + kmat + kmat.dot(kmat)*((1 - c)/(s**2))
         return transform_matrix
+
+
+    def write2obj(self, M, filename = 'result.obj'):
+        """
+        write to obj
+        :return:
+        """
+
+        f = open(filename, "w+")
+        for i in range(self.num_vertices()):
+            vinfo = "v " + str(M[i][0]) + " " + str(M[i][1]) + " " + str(M[i][2]) + "\n"
+            f.write(vinfo)
+
+        for face_id, face in enumerate(self.mesh.faces()):
+            temF = []
+            for tem in self.mesh.fv(face):
+                temF.append(tem.idx()+1)
+            finfo = "f " + str(temF[0]) + " " + str(temF[1]) + " " + str(temF[2]) + " " + str(temF[3]) + "\n"
+            f.write(finfo)
+        f.close()
+
+    def mesh_parameterization(self):
+        # Data setting
+        # M = all_points * 3
+        points_list = [self.mesh.point(vh) for vh in self.mesh.vertices()]
+
+        # aligned_points_list = []
+
+        # for vh in self.mesh.vertices():
+        #     normal_vh = self.mesh.normal(vh)
+        #     transform_matrix = self._transform_matrix(normal_vh, [0, 0, 1])
+        #     aligned_points_list.append(np.dot(transform_matrix, self.mesh.point(vh)))
+
+        M = np.array(points_list)
+
+        # initial value for M'
+        M_prime = np.array(points_list)
+        M_prime[:,2] = 0
+        # init lambda f
+        lambda_f = [1] * len(self.mesh.faces())
+
+        # energy thresholds
+        num_iter = 5
+        w_conf, w_lambda, w_f = 1, 1, 1
+
+        # Jaccob and f(x)
+        num_constraints = 3 * self.mesh.n_faces() + self.mesh.n_faces() + 2 * 3 * self.num_vertices()
+        num_variables = 3 * self.num_vertices() + self.mesh.n_faces()
+        face_array = self.mesh.face_vertex_indices()
+
+        for iter in range(num_iter):
+            print("iteration {}".format(iter))
+            J = np.zeros((num_constraints, num_variables))
+            f = np.zeros((num_constraints, 1))
+
+            # conf constraints
+            for face_id, face in tqdm(enumerate(self.mesh.faces())):
+                # face-vertices index and coordinates
+                tem_points_index = face_array[face_id]
+                tem_origin_points_coor = [points_list[i] for i in tem_points_index]
+                tem_new_points_coor = [M_prime[i] for i in tem_points_index]
+
+                # lambda
+                tem_lambda = lambda_f[face_id]
+
+                # c_conf,0  var: v0, v2, lambda
+                J[3 * face_id][(3 * tem_points_index[0]) : (3 * tem_points_index[0] + 3)] = -2 * (tem_new_points_coor[0] - tem_new_points_coor[2])
+                J[3 * face_id][(3 * tem_points_index[2]) : (3 * tem_points_index[2] + 3)] = 2 * (tem_new_points_coor[0] - tem_new_points_coor[2])
+                J[3 * face_id][3 * self.num_vertices() + face_id] = np.linalg.norm(tem_origin_points_coor[0] - tem_origin_points_coor[2]) ** 2
+                f[3 * face_id] = tem_lambda * np.linalg.norm(tem_origin_points_coor[0] - tem_origin_points_coor[2]) ** 2 \
+                                - np.linalg.norm(tem_new_points_coor[0] - tem_new_points_coor[2]) ** 2
+
+                # c_conf,1
+                J[3 * face_id + 1][(3 * tem_points_index[1]): (3 * tem_points_index[1] + 3)] = -2 * (tem_new_points_coor[1] - tem_new_points_coor[3])
+                J[3 * face_id + 1][(3 * tem_points_index[3]): (3 * tem_points_index[3] + 3)] = 2 * (tem_new_points_coor[1] - tem_new_points_coor[3])
+                J[3 * face_id + 1][3 * self.num_vertices() + face_id] = np.linalg.norm(tem_origin_points_coor[1] - tem_origin_points_coor[3]) ** 2
+                f[3 * face_id + 1] = tem_lambda * np.linalg.norm(tem_origin_points_coor[1] - tem_origin_points_coor[3]) ** 2 \
+                                 - np.linalg.norm(tem_new_points_coor[1] - tem_new_points_coor[3]) ** 2
+
+                # c_conf, 2
+                J[3 * face_id + 2][(3 * tem_points_index[0]) : (3 * tem_points_index[0] + 3)] = -1 * (tem_new_points_coor[1] - tem_new_points_coor[3])
+                J[3 * face_id + 2][(3 * tem_points_index[1]) : (3 * tem_points_index[1] + 3)] = -1 * (tem_new_points_coor[0] - tem_new_points_coor[2])
+                J[3 * face_id + 2][(3 * tem_points_index[2]) : (3 * tem_points_index[2] + 3)] = tem_new_points_coor[1] - tem_new_points_coor[3]
+                J[3 * face_id + 2][(3 * tem_points_index[3]) : (3 * tem_points_index[3] + 3)] = tem_new_points_coor[0] - tem_new_points_coor[2]
+                J[3 * face_id + 2][3 * self.num_vertices() + face_id] = np.dot((tem_origin_points_coor[0] - tem_origin_points_coor[2]), (tem_origin_points_coor[1] - tem_origin_points_coor[3]))
+                f[3 * face_id + 2] = tem_lambda * np.dot((tem_origin_points_coor[0] - tem_origin_points_coor[2]), (tem_origin_points_coor[1] - tem_origin_points_coor[3])) \
+                                    - np.dot((tem_new_points_coor[0] - tem_new_points_coor[2]), (tem_new_points_coor[1] - tem_new_points_coor[3]))
+
+            J = J * w_conf
+            f = f * w_conf
+
+            # lambda constraints
+            for face_id, face in tqdm(enumerate(self.mesh.faces())):
+                tem_lambda = lambda_f[face_id]
+
+                J[3 * self.mesh.n_faces() + face_id][3 * self.num_vertices() + face_id] = 1 * w_lambda
+                f[3 * self.mesh.n_faces() + face_id] = (tem_lambda - 1) * w_lambda
+
+            # fairness
+            cnt_const = 3 * self.mesh.n_faces() + self.mesh.n_faces()
+            for idx_vertex, vh in enumerate(self.mesh.vertices()):
+                vertex_list = []
+                for vertex in self.mesh.vv(vh):
+                    vertex_list.append(vertex)
+                idx_v_list = [vertex.idx() for vertex in vertex_list]
+                point_list = [self.mesh.point(vertex) for vertex in vertex_list]
+                point_vh = self.mesh.point(vh)
+
+                if self.mesh.is_boundary(vh):
+                    if len(vertex_list) == 3:
+                        for i in range(3):
+                            J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[0] + i] = 1 * w_f  # dc/dv0
+                            J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[2] + i] = 1 * w_f  # dc/dv2
+                            J[cnt_const + 6 * idx_vertex + i][3 * vh.idx() + i] = -2 * w_f  # dc/dvi
+                            f[cnt_const + 6 * idx_vertex + i] = (point_list[0][i] + point_list[2][i] - 2 * point_vh[
+                                i]) * w_f
+                    continue
+
+                if len(vertex_list) != 4:
+                    continue
+
+                for i in range(3):
+                    J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[0] + i] = 1 * w_f  # dc/dv0
+                    J[cnt_const + 6 * idx_vertex + i][3 * idx_v_list[2] + i] = 1 * w_f  # dc/dv2
+                    J[cnt_const + 6 * idx_vertex + i][3 * vh.idx() + i] = -2 * w_f  # dc/dvi
+                    f[cnt_const + 6 * idx_vertex + i] = (point_list[0][i] + point_list[2][i] - 2 * point_vh[i]) * w_f
+
+                    J[cnt_const + 6 * idx_vertex + 3 + i][3 * idx_v_list[1] + i] = 1 * w_f  # dc/dv1
+                    J[cnt_const + 6 * idx_vertex + 3 + i][3 * idx_v_list[3] + i] = 1 * w_f  # dc/dv3
+                    J[cnt_const + 6 * idx_vertex + 3 + i][3 * vh.idx() + i] = -2 * w_f  # dc/dvi
+                    f[cnt_const + 6 * idx_vertex + 3 + i] = (point_list[1][i] + point_list[3][i] - 2 * point_vh[i]) * w_f
+
+            J_trans = np.transpose(J)
+            H = np.dot(J_trans, J)
+            B = -np.dot(J_trans, f)
+            print("start")
+            try:
+                delta = np.linalg.solve(H, B)   # variables * 1
+            except:
+                print("singular")
+                delta = np.matmul(np.linalg.pinv(H), B)
+            print("end")
+            # update M prime M_prime
+            update_lr = 0.5  # liiquid
+            update_lr = 0.5
+            for ver_id, vertex in enumerate(self.mesh.vertices()):
+                # pdb.set_trace()
+                M_prime[ver_id] = M_prime[ver_id] + update_lr * delta[3 * ver_id: 3 * ver_id + 3].flatten()
+                # if iter == num_iter - 1:
+                    # M_prime[ver_id][2] = 0
+                self.mesh.set_point(vertex, M_prime[ver_id])
+                    # pdb.set_trace()
+
+            # update lambda
+            lambda_f = lambda_f + update_lr * delta[3 * self.num_vertices(): ].flatten()
+
+            # log error
+            E_conf = np.dot(np.transpose(f[:3 * self.mesh.n_faces()]), f[:3 * self.mesh.n_faces()])
+            E_lambda = np.dot(np.transpose(f[3 * self.mesh.n_faces():]), f[3 * self.mesh.n_faces():])
+            print("Iteration {} - E conf: {}".format(iter, E_conf))
+            print("Iteration {} - E lambda: {}".format(iter, E_lambda))
+
+        print("Optimization Finish")

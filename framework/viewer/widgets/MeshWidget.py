@@ -223,6 +223,10 @@ class MeshWidget(ViewerWidget):
                             colors = numpy.repeat([color], num_directions, axis=0)
                             self.viewer.data(index).add_edges(src, dst, colors)
 
+                        if imgui.button("Mesh Parameterization", -1, 0):
+                            mesh.mesh_parameterization()
+                            mesh.update_viewer_data(self.viewer.data(index))
+
             except MeshWidget.BreakoutException:
                 pass
 
