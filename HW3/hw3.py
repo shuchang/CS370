@@ -46,7 +46,8 @@ def view(file_obj):
 
 def main():
     # file_obj = join(os.getcwd(), "HW3/mesh/lilium_quad.obj")
-    file_obj = join(os.getcwd(), "HW3/mesh/formfinding-circular.obj")
+    file_obj = join(os.getcwd(), "HW3/mesh/0-00_02_1-projected.obj")
+    # file_obj = join(os.getcwd(), "HW3/mesh/formfinding-circular.obj")
     view(file_obj)
 
 
