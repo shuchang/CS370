@@ -17,4 +17,4 @@ To check the solution, directly clone this repo to your machine. For HW2 explana
  * `$ pip install matplotlib`
 
 #### HW 3
-To check the solution, directly clone this repo to your machine. For HW3 explanation, please refer to [HW3/hw3.md](https://github.com/shuchang/CS370/blob/master/HW2/hw2.md).
+To check the solution, directly clone this repo to your machine. For HW3 explanation, please refer to [HW3/hw3.md](https://github.com/shuchang/CS370/blob/master/HW3/hw3.md).
