@@ -18,8 +18,8 @@ The optimization is implemented with Gauss Newton method with $w_{conf}$, $w_\la
 #### Result
 Plots of mesh before and after mesh parameterization.
 1. lilium_quad
-    <img src="imgs/lilium_quad.jpg" style="zoom:20%;" /> <img src="imgs/new_lilium_quad.jpg" style="zoom:22%;" />
+    <img src="imgs/lilium_quad.jpg" style="zoom:20%;" /> <img src="imgs/new_lilium_quad.jpg" style="zoom:27%;" />
 2. formfinding-circular
-    <img src="imgs/formfinding-circular.jpg" style="zoom:20%;" /> <img src="imgs/new_formfinding-circular.jpg" style="zoom:18%;" />
+    <img src="imgs/formfinding-circular.jpg" style="zoom:27%;" /> <img src="imgs/new_formfinding-circular.jpg" style="zoom:18%;" />
 3. 0-00_02_1-projected
     <img src="imgs/0-00_02_1-projected.jpg" style="zoom:24%;" /> <img src="imgs/new_0-00_02_1-projected.jpg" style="zoom:22%;" />
